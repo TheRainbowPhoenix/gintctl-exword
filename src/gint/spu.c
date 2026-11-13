@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <gint/display.h>
 #include <gint/keyboard.h>
 #include <gint/mpu/power.h>

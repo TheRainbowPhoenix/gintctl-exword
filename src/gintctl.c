@@ -88,6 +88,9 @@ struct menuentry menu_gint[] = {
 
 /* Performance menu */
 struct menuentry menu_perf[] = {
+#if GINT_HW_EX
+	{ "Requires hosted timer/profiler support", NULL, MENU_CATEGORY },
+#else
 	CTGY("Performance", "Performance benchmarks")
 	{ "libprof basics",      gintctl_perf_libprof, 0 },
 #if !GINT_HW_CP
@@ -102,6 +105,7 @@ struct menuentry menu_perf[] = {
 	{ "Rendering functions", gintctl_perf_render, 0 },
 
 	/* TODO: Comparison with MonochromeLib */
+#endif
 #endif
 	{ NULL, NULL, 0 },
 };
@@ -187,11 +191,13 @@ int volatile gintctl_interrupt = 0;
 
 // TODO: Replace gintctl_getkey and related mechanisms with JustUI events
 // Note: this requires a single scene for the entire application
+#if !GINT_HW_CP && GINTCTL_ENABLE_USB
 static void gintctl_fxlink_notification(void)
 {
 	/* Hack: use bit #31 to indicate an internal interrupt */
 	gintctl_interrupt |= (1 << 31);
 }
+#endif
 
 key_event_t gintctl_getkey_opt(int options)
 {
@@ -279,7 +285,9 @@ void gintctl_scene_deinit(void)
 
 int main(void)
 {
+#if !GINT_HW_EX
 	gint_setrestart(1);
+#endif
 
 	/* Enable global getkey() shortcuts */
 #if !GINT_HW_CP
@@ -287,7 +295,9 @@ int main(void)
 #endif
 
 	/* Start the profiling library */
+#if !GINT_HW_EX
 	prof_init();
+#endif
 
 	/* Enable floating-point formatters */
 	__printf_enable_fp();
@@ -398,7 +408,9 @@ int main(void)
 	jscene_render(scene);
 
 	gintctl_scene_deinit();
+#if !GINT_HW_EX
 	prof_quit();
+#endif
 #if GINT_HW_EX
 	touch_exword_quit();
 	return -2;

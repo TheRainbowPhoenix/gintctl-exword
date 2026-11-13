@@ -38,4 +38,6 @@ gscreen *gintctl_scene_push(gscreen *s);
    function (unless some test function has nested screens). */
 void gintctl_scene_pop(void);
 
+void gintctl_regs(void);
+
 #endif /* _GINTCTL_UI */

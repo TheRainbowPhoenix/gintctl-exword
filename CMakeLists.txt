@@ -61,6 +61,10 @@ set(SOURCES
   src/widgets/gscreen.c
   src/widgets/gtable.c
 )
+if(FXSDK_PLATFORM_LONG STREQUAL "exword")
+  list(FILTER SOURCES EXCLUDE REGEX "^src/perf/")
+endif()
+
 set(ASSETS_fx
   assets-fx/fonts/hexa.png
   assets-fx/fonts/mini.png
