@@ -167,7 +167,7 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
   generate_d01(TARGET gintctl OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01" MODULE "gintct")
   generate_exword_package(TARGET gintctl
     D01 "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
-    APPID GINTCTL TITLE "gint control application"
+    APPID GINTC TITLE "gint control application"
     HTML_DIR "${EXWORD_METADATA_SOURCE}/html"
     OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages" LOCALES ja cn)
 endif()
