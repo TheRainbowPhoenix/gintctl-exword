@@ -164,7 +164,7 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
     "-Wl,-T,${EXWORD_FXSDK_TESTS}/exword.ld"
     -Wl,--build-id=none -Wl,--no-warn-rwx-segments)
   set_property(TARGET gintctl APPEND PROPERTY LINK_DEPENDS "${EXWORD_FXSDK_TESTS}/exword.ld")
-  generate_d01(TARGET gintctl OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01" MODULE "gintctl")
+  generate_d01(TARGET gintctl OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01" MODULE "gintct")
   generate_exword_package(TARGET gintctl
     D01 "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
     APPID GINTCTL TITLE "gint control application"
