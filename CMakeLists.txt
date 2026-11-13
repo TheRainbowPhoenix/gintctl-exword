@@ -7,6 +7,12 @@ include(GenerateG1A)
 include(GenerateG3A)
 include(GenerateHH3)
 include(Fxconv)
+if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
+  include(GenerateD01)
+  include(GenerateEXWORDPackage)
+  set(CMAKE_FXCONV_COMPILE_OBJECT
+    "<CMAKE_FXCONV_COMPILER> --toolchain=sh-elf --cg <SOURCE> -o <OBJECT>")
+endif()
 
 find_package(Gint 2.11 REQUIRED)
 find_package(JustUI 1.0 REQUIRED)
@@ -115,8 +121,12 @@ set(ASSETS_cp
   ${ASSETS_RGB}
   assets-cg/img/kbd_sprite_cp.png)
 
+set(ASSETS_exword
+  ${ASSETS_RGB}
+  assets-cg/img/kbd_sprite_ex.png)
+
 fxconv_declare_converters(assets-cg/converters.py)
-fxconv_declare_assets(${ASSETS_fx} ${ASSETS_cg} ${ASSETS_cp} WITH_METADATA)
+fxconv_declare_assets(${ASSETS_fx} ${ASSETS_cg} ${ASSETS_cp} ${ASSETS_exword} WITH_METADATA)
 
 add_executable(gintctl ${SOURCES} ${ASSETS_${FXSDK_PLATFORM}})
 target_compile_options(gintctl PRIVATE
@@ -141,4 +151,23 @@ elseif("${FXSDK_PLATFORM_LONG}" STREQUAL fx9860G_G3A)
     NAME "" ICONS assets-cg/icon-uns.png assets-cg/icon-sel.png)
 elseif("${FXSDK_PLATFORM_LONG}" STREQUAL fxCP)
   generate_hh3(TARGET gintctl OUTPUT "gintctl.hh3")
+endif()
+
+if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
+  if(NOT DEFINED EXWORD_FXSDK_TESTS OR NOT DEFINED EXWORD_METADATA_SOURCE)
+    message(FATAL_ERROR "EXWORD_FXSDK_TESTS and EXWORD_METADATA_SOURCE required")
+  endif()
+  target_sources(gintctl PRIVATE "${EXWORD_FXSDK_TESTS}/crt0.S")
+  target_compile_definitions(gintctl PRIVATE GINTCTL_ENABLE_USB=0)
+  target_compile_options(gintctl PRIVATE -fno-pic -fno-pie -fno-stack-protector)
+  target_link_options(gintctl PRIVATE -nostdlib -no-pie
+    "-Wl,-T,${EXWORD_FXSDK_TESTS}/exword.ld"
+    -Wl,--build-id=none -Wl,--no-warn-rwx-segments)
+  set_property(TARGET gintctl APPEND PROPERTY LINK_DEPENDS "${EXWORD_FXSDK_TESTS}/exword.ld")
+  generate_d01(TARGET gintctl OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01" MODULE "gintctl")
+  generate_exword_package(TARGET gintctl
+    D01 "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
+    APPID GINTCTL TITLE "gint control application"
+    HTML_DIR "${EXWORD_METADATA_SOURCE}/html"
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages" LOCALES ja cn)
 endif()

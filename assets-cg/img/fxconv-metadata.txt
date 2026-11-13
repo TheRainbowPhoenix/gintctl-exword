@@ -25,3 +25,7 @@ libimg_sq_odd.png:
   profile: p8_rgb565a
 libimg_train.png:
   profile: p8_rgb565
+
+kbd_sprite_ex.png:
+  custom-type: kbd-sprite
+  keycodes: ex

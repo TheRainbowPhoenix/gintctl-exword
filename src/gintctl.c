@@ -7,6 +7,9 @@
 #include <gint/usb-ff-bulk.h>
 #include <gint/config.h>
 #include <gint/gray.h>
+#if GINT_HW_EX
+#include <gint/drivers/touch.h>
+#endif
 
 #include <gintctl/config.h>
 #include <gintctl/util.h>
@@ -396,5 +399,10 @@ int main(void)
 
 	gintctl_scene_deinit();
 	prof_quit();
+#if GINT_HW_EX
+	touch_exword_quit();
+	return -2;
+#else
 	return 0;
+#endif
 }

@@ -45,6 +45,9 @@ struct kbdmodel {
 #elif GINT_HW_CP
   extern struct kbdmodel const img_kbd_sprite_cp;
   #define KBD_SPRITE img_kbd_sprite_cp
+#elif GINT_HW_EX
+  extern struct kbdmodel const img_kbd_sprite_ex;
+  #define KBD_SPRITE img_kbd_sprite_ex
 #endif
 
 static void render_keyboard(keydev_t *d, int x0, int y0)
@@ -148,11 +151,23 @@ static char const *key_name(int key)
 		"Sqrt", "Exp",
 	};
 
+#if GINT_HW_EX
+    static char const *ex_names[] = {
+        "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+        "A", "S", "D", "F", "G", "H", "J", "K", "L",
+        "Z", "X", "C", "V", "B", "N", "M",
+        "HISTORY", "ZOOM", "JUMP", "AUDIO", "LAYOUT",
+    };
+    if(key >= KEY_EX_Q && key <= KEY_EX_LAYOUT) return ex_names[key-KEY_EX_Q];
+    if(key == KEY_F7) return "F7";
+    if(key == KEY_F8) return "F8";
+#endif
 	if(key == 0) return "N/A";
 	if(key == KEY_ACON) key = 0x45;
 	int row = 9 - (key >> 4);
 	int col = (key & 15) - 1;
 	if((key & 0xf0) == 0xa0) return key_names_0xa[col];
+	if(row < 0 || row >= 9 || col < 0 || col >= 6) return "?";
 	return key_names[6*row + col];
 }
 

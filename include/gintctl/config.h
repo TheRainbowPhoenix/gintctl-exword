@@ -6,4 +6,6 @@
    for hacking around issues of binary size, features, etc. */
 
 // When 0, the USB driver should not be linked in.
+#ifndef GINTCTL_ENABLE_USB
 #define GINTCTL_ENABLE_USB 1
+#endif

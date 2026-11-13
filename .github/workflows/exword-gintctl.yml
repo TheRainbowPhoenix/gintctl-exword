@@ -1,0 +1,105 @@
+name: EX-word gintctl
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      gint_ref:
+        description: gint-exword branch or tag
+        default: feature/exword-runtime-bridge
+        type: string
+      justui_repository:
+        description: JustUI repository URL
+        default: https://git.planet-casio.com/Lephenixnoir/JustUI.git
+        type: string
+      justui_ref:
+        description: JustUI branch or tag
+        default: master
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  exword:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/therainbowphoenix/gint-docker:main
+    env:
+      GINT_REF: ${{ inputs.gint_ref || 'feature/exword-runtime-bridge' }}
+      JUSTUI_REPOSITORY: ${{ inputs.justui_repository || 'https://git.planet-casio.com/Lephenixnoir/JustUI.git' }}
+      JUSTUI_REF: ${{ inputs.justui_ref || 'master' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install fxSDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch fix/exword-data-load-alignment https://github.com/TheRainbowPhoenix/fxsdk-exword.git /tmp/fxsdk-src
+          cmake -S /tmp/fxsdk-src -B /tmp/fxsdk-build \
+            -DCMAKE_INSTALL_PREFIX=/tmp/fxsdk-exword \
+            -DFXLINK_DISABLE_SDL2=ON -DFXLINK_DISABLE_UDISKS2=ON
+          cmake --build /tmp/fxsdk-build --parallel 2
+          cmake --install /tmp/fxsdk-build
+          git clone --depth=1 https://github.com/brijohn/elf2d01.git /tmp/elf2d01
+          cc -O2 /tmp/elf2d01/elf2d01.c -o /tmp/fxsdk-exword/bin/elf2d01
+          echo /tmp/fxsdk-exword/bin >> "$GITHUB_PATH"
+
+      - name: Build gint
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch "$GINT_REF" https://github.com/TheRainbowPhoenix/gint-exword.git /tmp/gint-src
+          cmake -S /tmp/gint-src -B /tmp/gint-build \
+            -DCMAKE_TOOLCHAIN_FILE=/tmp/fxsdk-exword/lib/cmake/fxsdk/EXWORD.cmake \
+            -DCMAKE_INSTALL_PREFIX=/tmp/gint-exword \
+            -DCMAKE_MODULE_PATH=/tmp/fxsdk-exword/lib/cmake/fxsdk
+          cmake --build /tmp/gint-build --parallel 2
+          cmake --install /tmp/gint-build
+
+      - name: Build JustUI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch "$JUSTUI_REF" "$JUSTUI_REPOSITORY" /tmp/justui-src
+          cmake -S /tmp/justui-src -B /tmp/justui-build \
+            -DCMAKE_TOOLCHAIN_FILE=/tmp/fxsdk-exword/lib/cmake/fxsdk/EXWORD.cmake \
+            -DCMAKE_INSTALL_PREFIX=/tmp/justui-exword \
+            -DCMAKE_PREFIX_PATH=/tmp/gint-exword \
+            '-DCMAKE_MODULE_PATH=/tmp/gint-exword/lib/cmake/fxsdk;/tmp/fxsdk-exword/lib/cmake/fxsdk'
+          cmake --build /tmp/justui-build --parallel 2
+          cmake --install /tmp/justui-build
+
+      - name: Build gintctl
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch main https://github.com/TheRainbowPhoenix/exword-xd-a8500-TEST.git /tmp/exword-metadata
+          cmake -S . -B build-exword \
+            -DCMAKE_TOOLCHAIN_FILE=/tmp/fxsdk-exword/lib/cmake/fxsdk/EXWORD.cmake \
+            '-DCMAKE_PREFIX_PATH=/tmp/gint-exword;/tmp/justui-exword' \
+            '-DCMAKE_MODULE_PATH=/tmp/gint-exword/lib/cmake/fxsdk;/tmp/justui-exword/lib/cmake/JustUI;/tmp/fxsdk-exword/lib/cmake/fxsdk' \
+            -DEXWORD_FXSDK_TESTS=/tmp/fxsdk-src/.github/tests_files/a8500 \
+            -DEXWORD_METADATA_SOURCE=/tmp/exword-metadata
+          cmake --build build-exword --parallel 2
+          test -s build-exword/gintctl.d01
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gintctl-exword-build
+          if-no-files-found: warn
+          path: |
+            build-exword/packages/
+            build-exword/gintctl.d01
+            build-exword/map
+            build-exword/CMakeFiles/CMakeConfigureLog.yaml
+            /tmp/fxsdk-build/CMakeFiles/CMakeConfigureLog.yaml
+            /tmp/gint-build/CMakeFiles/CMakeConfigureLog.yaml
+            /tmp/justui-build/CMakeFiles/CMakeConfigureLog.yaml
