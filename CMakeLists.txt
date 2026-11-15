@@ -202,7 +202,7 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
     message(FATAL_ERROR "Installed gint EX-word kernel linker script required")
   endif()
 
-  target_compile_definitions(gintctl PRIVATE GINTCTL_ENABLE_USB=0)
+  target_compile_definitions(gintctl PRIVATE GINTCTL_ENABLE_USB=1)
   target_compile_options(gintctl PRIVATE -fno-pic -fno-pie -fno-stack-protector)
   target_link_options(gintctl PRIVATE -nostdlib -no-pie
     -Wl,--build-id=none -Wl,--no-warn-rwx-segments
