@@ -470,11 +470,33 @@ static void alignment_write_tests(GUNUSED struct alignment_write_data *data)
 // Main function
 //---
 
+#if GINT_HW_EX
+static void draw_input_debug(key_event_t ev, int digit, unsigned count,
+	int tab, char const *status, bool update)
+{
+	int y = DHEIGHT - 44;
+	drect(0, y, DWIDTH - 1, DHEIGHT - 17, C_WHITE);
+	dprint(4, y, C_BLACK,
+		"%u: key=%02X digit=%d type=%u r%u c%u USB=%d tab=%d",
+		count, ev.key, digit, ev.type, ev.row, ev.col,
+		usb_is_open(), tab + 1);
+	dprint(4, y + 12, C_BLACK, "%s (gint %07x)", status, GINT_HASH);
+	if(update)
+		dupdate_rect(0, y, DWIDTH - 1, DHEIGHT - 17);
+}
+#endif
+
 /* gintctl_gint_usb(): USB communication */
 void gintctl_gint_usb(void)
 {
 	int key=0, tab=0;
 	int open = usb_is_open();
+#if GINT_HW_EX
+	key_event_t last_event = { 0 };
+	int last_digit = -1;
+	unsigned event_count = 0;
+	char const *status = "Press F5, then E";
+#endif
 	GUNUSED int scroll0=0, scroll1=0, scroll2=0, maxscroll2=0;
 
 	struct alignment_write_data awd = { 0 };
@@ -519,6 +541,9 @@ void gintctl_gint_usb(void)
 		#endif
 
 		dfont(old_font);
+#if GINT_HW_EX
+		draw_input_debug(last_event, last_digit, event_count, tab, status, false);
+#endif
 		dupdate();
 
 		key_event_t ev = gintctl_getkey();
@@ -568,6 +593,23 @@ void gintctl_gint_usb(void)
 		if(tab == 2 && ev.shift && digit == 8)
 			reset_logger();
 
+#if GINT_HW_EX
+		last_event = ev;
+		last_digit = digit;
+		event_count++;
+		bool test_requested = tab == 4 && digit >= 1 && digit <= 5;
+		bool test_started = test_requested && usb_is_open();
+		if(test_started)
+			status = "Starting USB test";
+		else if(test_requested)
+			status = "USB not configured";
+		else if(digit >= 0)
+			status = "Select F5 TESTS";
+		else
+			status = "No numeric shortcut";
+		draw_input_debug(ev, digit, event_count, tab, status, true);
+#endif
+
 		if(tab == 4 && digit == 1 && usb_is_open()) {
 //			extern prof_t usb_cpu_write_prof;
 //			usb_cpu_write_prof = prof_make();
@@ -600,6 +642,10 @@ void gintctl_gint_usb(void)
 		}
 		if(tab == 4 && digit == 5 && usb_is_open())
 			alignment_write_tests(&awd);
+#if GINT_HW_EX
+		if(test_started)
+			status = "USB test call returned";
+#endif
 	}
 
 	usb_set_log(NULL);
