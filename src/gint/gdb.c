@@ -11,7 +11,7 @@
 #include <gintctl/util.h>
 #include <stdio.h>
 
-#if GINTCTL_ENABLE_USB
+#if GINTCTL_ENABLE_USB && !GINT_HW_EX
 
 #ifdef FXCG50
 static void val(int y, const char *name, uint32_t value)

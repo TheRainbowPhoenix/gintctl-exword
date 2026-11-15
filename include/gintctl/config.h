@@ -9,3 +9,7 @@
 #ifndef GINTCTL_ENABLE_USB
 #define GINTCTL_ENABLE_USB 1
 #endif
+
+#ifndef GINTCTL_USB_ONLY
+#define GINTCTL_USB_ONLY 0
+#endif

@@ -25,6 +25,15 @@ permissions:
 
 jobs:
   exword:
+    strategy:
+      matrix:
+        include:
+          - artifact: gintctl-exword
+            usb: "OFF"
+            appid: GINTC
+          - artifact: gintctl-exword-usb
+            usb: "ON"
+            appid: GINTU
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/therainbowphoenix/gint-docker:main
@@ -86,12 +95,13 @@ jobs:
             '-DCMAKE_PREFIX_PATH=/tmp/gint-exword;/tmp/justui-exword' \
             '-DCMAKE_MODULE_PATH=/tmp/gint-exword/lib/cmake/fxsdk;/tmp/justui-exword/lib/cmake/fxsdk;/tmp/fxsdk-exword/lib/cmake/fxsdk' \
             -DEXWORD_FXSDK_TESTS=/tmp/fxsdk-src/.github/tests_files/a8500 \
-            -DEXWORD_METADATA_SOURCE=/tmp/exword-metadata
+            -DEXWORD_METADATA_SOURCE=/tmp/exword-metadata \
+            -DGINTCTL_EXWORD_USB_TEST=${{ matrix.usb }}
           cmake --build build-exword --parallel 2
           test -s build-exword/gintctl.d01
           test "$(stat -c %s build-exword/gintctl.d01)" -le 131072
           for locale in ja cn; do
-            package="build-exword/packages/${locale}/GINTC"
+            package="build-exword/packages/${locale}/${{ matrix.appid }}"
             test -s "$package/gintctl.d01"
             test -s "$package/train.bin"
             test -s "$package/diction.htm"
@@ -101,14 +111,14 @@ jobs:
       - name: Upload Japanese package
         uses: actions/upload-artifact@v4
         with:
-          name: gintctl-exword-ja
+          name: ${{ matrix.artifact }}-ja
           if-no-files-found: error
           path: build-exword/packages/ja/
 
       - name: Upload Chinese package
         uses: actions/upload-artifact@v4
         with:
-          name: gintctl-exword-cn
+          name: ${{ matrix.artifact }}-cn
           if-no-files-found: error
           path: build-exword/packages/cn/
 
@@ -135,6 +145,6 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gintctl-exword-diagnostics
+          name: ${{ matrix.artifact }}-diagnostics
           if-no-files-found: warn
           path: build-exword/diagnostics/

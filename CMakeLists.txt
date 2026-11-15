@@ -65,6 +65,7 @@ set(SOURCES
 
 )
 if(FXSDK_PLATFORM_LONG STREQUAL "exword")
+  list(REMOVE_ITEM SOURCES src/gint/gdb.c src/gint/gdb.S)
   list(FILTER SOURCES EXCLUDE REGEX "^src/perf/")
   list(APPEND SOURCES src/perf/libprof.c src/perf/render.c)
 endif()
@@ -202,7 +203,17 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
     message(FATAL_ERROR "Installed gint EX-word kernel linker script required")
   endif()
 
-  target_compile_definitions(gintctl PRIVATE GINTCTL_ENABLE_USB=1)
+  option(GINTCTL_EXWORD_USB_TEST "Build the separate EX-word USB test" OFF)
+  target_compile_definitions(gintctl PRIVATE
+    GINTCTL_ENABLE_USB=$<BOOL:${GINTCTL_EXWORD_USB_TEST}>
+    GINTCTL_USB_ONLY=$<BOOL:${GINTCTL_EXWORD_USB_TEST}>
+  )
+  set(EXWORD_APPID GINTC)
+  set(EXWORD_TITLE "gint control application")
+  if(GINTCTL_EXWORD_USB_TEST)
+    set(EXWORD_APPID GINTU)
+    set(EXWORD_TITLE "gint USB tests")
+  endif()
   target_compile_options(gintctl PRIVATE -fno-pic -fno-pie -fno-stack-protector)
   target_link_options(gintctl PRIVATE -nostdlib -no-pie
     -Wl,--build-id=none -Wl,--no-warn-rwx-segments
@@ -239,8 +250,8 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
   generate_exword_package(
     TARGET gintctl
     D01 "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
-    APPID GINTC
-    TITLE "gint control application"
+    APPID "${EXWORD_APPID}"
+    TITLE "${EXWORD_TITLE}"
     HTML_DIR "${EXWORD_METADATA_SOURCE}/html"
     OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages"
     LOCALES ja cn
@@ -250,7 +261,7 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
     add_custom_command(
       TARGET gintctl_package_${locale} POST_BUILD
       COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${TRAIN_ASSET}"
-        "${CMAKE_CURRENT_BINARY_DIR}/packages/${locale}/GINTC/train.bin"
+        "${CMAKE_CURRENT_BINARY_DIR}/packages/${locale}/${EXWORD_APPID}/train.bin"
       VERBATIM
     )
   endforeach()

@@ -395,7 +395,8 @@ void gintctl_gint_ram(void)
 		return;
 	gscreen_add_tab(s, label, NULL);
 
-	extern char rbss, euram, gint_heap_end, gint_stack_end;
+	extern uint32_t rbss;
+	extern char euram, gint_heap_end, gint_stack_end;
 	jlabel_asprintf(label,
 		"API RAM: 74000000 (%u bytes)\n"
 		"Physical backing: %08x\n"

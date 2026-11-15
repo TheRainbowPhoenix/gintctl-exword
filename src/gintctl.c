@@ -79,7 +79,7 @@ struct menuentry menu_gint[] = {
 	#if GINT_RENDER_MONO
 	{ "Gray rendering",     gintctl_gint_grayrender, 0 },
 	#endif
-	#if !GINT_HW_CP && GINTCTL_ENABLE_USB
+	#if !GINT_HW_CP && !GINT_HW_EX && GINTCTL_ENABLE_USB
 	{ "GDB",                gintctl_gint_gdb, MENU_SH4_ONLY },
 	#endif
 	{ "SPU research",       gintctl_gint_spu, MENU_SH4_ONLY },
@@ -333,6 +333,10 @@ int main(void)
 	tr.enabled |= KEYDEV_TR_DELAYED_ALPHA | KEYDEV_TR_INSTANT_ALPHA;
 	keydev_set_transform(keydev_std(), tr);
 
+#if GINT_HW_EX && GINTCTL_USB_ONLY
+	gintctl_gint_usb();
+	usb_close();
+#else
 	gintctl_scene_init();
 
 	//---
@@ -420,6 +424,7 @@ int main(void)
 	jscene_render(scene);
 
 	gintctl_scene_deinit();
+#endif
 	prof_quit();
 #if GINT_HW_EX
 	touch_exword_quit();
