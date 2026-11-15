@@ -299,10 +299,12 @@ int main(void)
 	prof_init();
 #endif
 
+#if !GINT_HW_EX
 	/* Enable floating-point formatters */
 	__printf_enable_fp();
 	/* Enable fixed-point formatters */
 	__printf_enable_fixed();
+#endif
 
 	#if GINT_RENDER_MONO
 	/* Use the Unicode font uf5x7 on fx-9860G */

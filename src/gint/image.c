@@ -135,12 +135,18 @@ static void print_linear_map(int x, int y, struct image_linear_map *map)
 		map->src_w, map->src_h, map->src_stride);
 	dprint(x, y+14, C_BLACK, "Output: %dx%d (stride %d)",
 		map->dst_w, map->dst_h, map->dst_stride);
+#if GINT_HW_EX
+	dprint(x, y+28, C_BLACK, "uv initial (16.16): %08x %08x", map->u, map->v);
+	dprint(x, y+42, C_BLACK, "uv per x (16.16): %08x %08x", map->dx_u, map->dx_v);
+	dprint(x, y+56, C_BLACK, "uv per y (16.16): %08x %08x", map->dy_u, map->dy_v);
+#else
 	dprint(x, y+28, C_BLACK, "uv initial: %f %f",
 		(double)map->u / 65536, (double)map->v / 65536);
 	dprint(x, y+42, C_BLACK, "uv per x: %f %f",
 		(double)map->dx_u / 65536, (double)map->dx_v / 65536);
 	dprint(x, y+56, C_BLACK, "uv per y: %f %f",
 		(double)map->dy_u / 65536, (double)map->dy_v / 65536);
+#endif
 }
 
 static void scene_2(void)
@@ -155,7 +161,21 @@ static void scene_2(void)
 	int cx1 = train->width * 3 / 4;
 	int cy1 = train->height / 4;
 	int cx2=cx1, cy2=cy1;
+#if GINT_HW_EX
+	int scale = 13 * 65536 / 10;
+	image_scale(train, scale, scale, &map);
+	int width = map.dst_w;
+	map.dst_w = map.dst_h;
+	map.dst_h = width;
+	map.v = (train->height - 1) * 65536;
+	map.dx_v = -map.dx_u;
+	map.dy_u = map.dx_u;
+	map.dx_u = map.dy_v = 0;
+	cx2 = (train->height - 1 - cy1) * scale / 65536;
+	cy2 = cx1 * scale / 65536;
+#else
 	image_rotate_around_scale(train, 1.4, 1.3*65536, true, &cx2, &cy2, &map);
+#endif
 
 	image_t *tmp = image_linear_alloc(train, &map);
 	image_copy(tmp, image_at(vram, 10, 10), true);

@@ -89,6 +89,7 @@ jobs:
             -DEXWORD_METADATA_SOURCE=/tmp/exword-metadata
           cmake --build build-exword --parallel 2
           test -s build-exword/gintctl.d01
+          test "$(stat -c %s build-exword/gintctl.d01)" -le 131072
 
       - uses: actions/upload-artifact@v4
         if: always()
