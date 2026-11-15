@@ -48,6 +48,19 @@ jobs:
           cmake --build /tmp/gint-cp-build --parallel 2
           cmake --install /tmp/gint-cp-build
 
+      - name: Build and install matching JustUI (fx-CP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch dev \
+            https://github.com/TheRainbowPhoenix/JustUI-exword.git /tmp/justui-src
+          cmake -S /tmp/justui-src -B /tmp/justui-cp-build \
+            -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
+            -DCMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk" \
+            -DFXSDK_CMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk"
+          cmake --build /tmp/justui-cp-build --parallel 2
+          cmake --install /tmp/justui-cp-build
+
       - name: Build (fxsdk build-cp)
         shell: bash
         run: |
