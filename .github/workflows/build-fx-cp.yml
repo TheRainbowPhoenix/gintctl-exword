@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git clone --depth=1 --branch feature/exword-runtime-bridge \
+          git clone --branch feature/exword-runtime-bridge \
             https://github.com/TheRainbowPhoenix/gint-exword.git /tmp/gint-src
           cmake -S /tmp/gint-src -B /tmp/gint-cp-build \
             -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
