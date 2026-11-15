@@ -241,9 +241,15 @@ static void draw_manual(jlabel *label, struct switch_stats *stats)
 		"World switches performed: %d\n"
 		"Return-to-menu performed: %d\n"
 		"\n" // "Switch time: %d µs\n", stats->world_switch_time
+		#if GINT_HW_EX
+		"[Q/1]: Standard world switch\n"
+		"[W/2]: Return-to-menu with gint_osmenu()\n"
+		"[E/3]: World switch with shared libprof (TODO)",
+		#else
 		"[1]: Standard world switch\n"
 		"[2]: Return-to-menu with gint_osmenu()\n"
 		"[3]: World switch with shared libprof (TODO)",
+		#endif
 		stats->world_switch_count,
 		stats->return_to_menu_count);
 	#endif
@@ -297,6 +303,7 @@ void gintctl_gint_drivers(void)
 		int Key = e.type == JWIDGET_KEY &&
 		          (e.key.type == KEYEV_DOWN || e.key.type == KEYEV_HOLD) ?
 		          e.key.key : 0;
+		int digit = keycode_digit(Key);
 		bool repaint_switches = false;
 
 		if(Tab == 1 && Key == KEY_EXIT)
@@ -330,21 +337,21 @@ void gintctl_gint_drivers(void)
 		}
 
 		/* Actions for the manual tab */
-		if(Tab == 2 && Key == KEY_1) {
+		if(Tab == 2 && digit == 1) {
 			gint_world_switch(GINT_CALL_INC(&stats.world_switch_count));
 			repaint_switches = true;
 		}
-		if(Tab == 2 && Key == KEY_2) {
+		if(Tab == 2 && digit == 2) {
 			/* TODO: Should render next frame in advance for seamless return */
 			stats.return_to_menu_count++;
 			dupdate();
 
 			gint_osmenu();
 			/* Wait for KEY_2 to be released before calling next getkey() */
-			while(keydown(KEY_2)) waitevent(NULL);
+			while(keydown(Key)) waitevent(NULL);
 			repaint_switches = true;
 		}
-		if(Tab == 2 && Key == KEY_3) {
+		if(Tab == 2 && digit == 3) {
 			/* TODO: World switch with performance statistics */
 			repaint_switches = true;
 		}

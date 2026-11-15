@@ -362,11 +362,19 @@ static void draw_tests(GUNUSED struct alignment_write_data *data)
 #endif
 
 #if GINT_RENDER_RGB
+#if GINT_HW_EX
+	row_print(1, 1, "[Q/1]: Take screenshot (fxlink API)");
+	row_print(2, 1, "[W/2]: Take screenshot (asynchronous)");
+	row_print(3, 1, "[E/3]: Send some text (fxlink API)");
+	row_print(4, 1, "[R/4]: Send some logs (fxlink API)");
+	row_print(5, 1, "[T/5]: Pipe write alignment tests");
+#else
 	row_print(1, 1, "[1]: Take screenshot (fxlink API)");
 	row_print(2, 1, "[2]: Take screenshot (asynchronous)");
 	row_print(3, 1, "[3]: Send some text (fxlink API)");
 	row_print(4, 1, "[4]: Send some logs (fxlink API)");
 	row_print(5, 1, "[5]: Pipe write alignment tests");
+#endif
 
 	/* for(int i = 0; i < 4; i++) {
 		int col = 1 + 20 * (i & 1);
@@ -495,7 +503,11 @@ void gintctl_gint_usb(void)
 
 		#if GINT_RENDER_RGB
 		if(tab == 2)
+		#if GINT_HW_EX
+			row_title("USB logs (SHIFT+U: Save to file, SHIFT+I: Clear)");
+		#else
 			row_title("USB logs (SHIFT+7: Save to file, SHIFT+8: Clear)");
+		#endif
 		else
 			row_title("USB 2.0 function module and communication");
 		fkey_menu(1, "REGS");
@@ -511,6 +523,7 @@ void gintctl_gint_usb(void)
 
 		key_event_t ev = gintctl_getkey();
 		key = ev.key;
+		int digit = keycode_digit(key);
 
 		/* Scroll down log automatically at the cost of a redraw */
 		if(log_interrupt && tab == 2)
@@ -550,12 +563,12 @@ void gintctl_gint_usb(void)
 			scroll2 = max(scroll2 - scroll_speed, 0);
 		if(tab == 2 && key == KEY_DOWN)
 			scroll2 = min(scroll2 + scroll_speed, maxscroll2);
-		if(tab == 2 && ev.shift && key == KEY_7)
+		if(tab == 2 && ev.shift && digit == 7)
 			gint_world_switch(GINT_CALL(save_logger));
-		if(tab == 2 && ev.shift && key == KEY_8)
+		if(tab == 2 && ev.shift && digit == 8)
 			reset_logger();
 
-		if(tab == 4 && key == KEY_1 && usb_is_open()) {
+		if(tab == 4 && digit == 1 && usb_is_open()) {
 //			extern prof_t usb_cpu_write_prof;
 //			usb_cpu_write_prof = prof_make();
 
@@ -566,12 +579,12 @@ void gintctl_gint_usb(void)
 			USB_LOG("Screenshot: %d us\n", time);
 //			USB_LOG("Spent CPU writing: %d us\n", prof_time(usb_cpu_write_prof));
 		}
-		if(tab == 4 && key == KEY_2 && usb_is_open()) screenshot_async();
-		if(tab == 4 && key == KEY_3 && usb_is_open()) {
+		if(tab == 4 && digit == 2 && usb_is_open()) screenshot_async();
+		if(tab == 4 && digit == 3 && usb_is_open()) {
 			GALIGNED(4) char str[] = "Hi! This is gintctl!";
 			usb_fxlink_text(str, 0);
 		}
-		if(tab == 4 && key == KEY_4 && usb_is_open()) {
+		if(tab == 4 && digit == 4 && usb_is_open()) {
 			uint32_t time = prof_exec({
 				int pipe = usb_ff_bulk_output();
 				int data_size = _(1024, 396*224*2);
@@ -585,7 +598,7 @@ void gintctl_gint_usb(void)
 			});
 			USB_LOG("DMA screenshot: %d us\n", time);
 		}
-		if(tab == 4 && key == KEY_5 && usb_is_open())
+		if(tab == 4 && digit == 5 && usb_is_open())
 			alignment_write_tests(&awd);
 	}
 
