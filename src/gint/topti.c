@@ -8,6 +8,10 @@
 void gintctl_gint_topti(void)
 {
 	int key = 0;
+#if GINT_HW_EX
+	extern font_t font_test_unicode;
+	font_t const *old_font = dfont(&font_test_unicode);
+#endif
 
 	/* Text position parameters */
 	int x = _(1,6), y=_(0,22);
@@ -42,4 +46,7 @@ void gintctl_gint_topti(void)
 		if(key == KEY_UP    && y >= -DHEIGHT) y--;
 		if(key == KEY_DOWN  && y <=  DHEIGHT) y++;
 	}
+#if GINT_HW_EX
+	dfont(old_font);
+#endif
 }

@@ -1,6 +1,7 @@
 #include <gint/display.h>
 #include <gint/keyboard.h>
 #include <gint/exc.h>
+#include <gint/mmu.h>
 
 #include <gintctl/mem.h>
 #include <gintctl/util.h>
@@ -121,6 +122,9 @@ static void paint_mem(int x, int y, struct view *v)
 void gintctl_mem(void)
 {
 	struct view v = { .base = 0x88000000, .ascii = false, .lines = _(9,14) };
+#if GINT_HW_EX
+	v.base = (uint32_t)mmu_uram();
+#endif
 
 	gscreen *s = gscreen_create2(NULL, &img_opt_mem,
 		"Memory browser", "@JUMP;;#ROM;#RAM;#ILRAM;#ADDIN", NULL);
@@ -181,8 +185,14 @@ void gintctl_mem(void)
 		#endif
 
 		if(e.type == JFKEYS_TRIGGERED && e.data >= 2 && !input_focus) {
+#if GINT_HW_EX
+			uint32_t const bases[] = {
+				0x80000000, (uint32_t)mmu_uram(), 0xe5200000, 0x70000000,
+			};
+#else
 			static uint32_t const bases[] = {
 				0x80000000, 0x88000000, 0xe5200000, 0x00300000 };
+#endif
 			v.base = bases[e.data - 2];
 			mem->widget.update = 1;
 		}

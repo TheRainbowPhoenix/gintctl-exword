@@ -89,7 +89,9 @@ struct menuentry menu_gint[] = {
 /* Performance menu */
 struct menuentry menu_perf[] = {
 #if GINT_HW_EX
-	{ "Requires hosted timer/profiler support", NULL, MENU_CATEGORY },
+	CTGY("Performance", "Performance benchmarks")
+	{ "libprof basics",      gintctl_perf_libprof, 0 },
+	{ "Rendering functions", gintctl_perf_render, 0 },
 #else
 	CTGY("Performance", "Performance benchmarks")
 	{ "libprof basics",      gintctl_perf_libprof, 0 },
@@ -295,7 +297,15 @@ int main(void)
 #endif
 
 	/* Start the profiling library */
-#if !GINT_HW_EX
+#if GINT_HW_EX
+	if(prof_init()) {
+		dclear(C_WHITE);
+		dtext(4, 4, C_BLACK, "No TMU available for profiling");
+		dupdate();
+		getkey();
+		return -2;
+	}
+#else
 	prof_init();
 #endif
 
@@ -410,9 +420,7 @@ int main(void)
 	jscene_render(scene);
 
 	gintctl_scene_deinit();
-#if !GINT_HW_EX
 	prof_quit();
-#endif
 #if GINT_HW_EX
 	touch_exword_quit();
 	return -2;

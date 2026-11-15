@@ -6,3 +6,7 @@ font8x9_bold.png:
   grid.padding: 1
   grid.border: 0
   proportional: true
+
+unicode.txt:
+  custom-type: unicode-test-font
+  name: font_test_unicode

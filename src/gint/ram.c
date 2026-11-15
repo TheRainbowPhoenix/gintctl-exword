@@ -1,6 +1,7 @@
 #include <gint/display.h>
 #include <gint/keyboard.h>
 #include <gint/cpu.h>
+#include <gint/mmu.h>
 #include <gint/mpu/spu.h>
 #define SPU SH7305_SPU
 
@@ -382,6 +383,36 @@ static void table_gen(gtable *t, int row, struct region const *regions)
 /* gintctl_gint_ram(): Determine the size of some memory areas */
 void gintctl_gint_ram(void)
 {
+#if GINT_HW_EX
+	gscreen *s = gscreen_create2("RAM mappings", &img_opt_gint_ram,
+		"EX-word RAM allocated to this add-in", "", NULL);
+	if(!s)
+		return;
+	gintctl_scene_push(s);
+
+	jlabel *label = jlabel_create("", NULL);
+	if(!label)
+		return;
+	gscreen_add_tab(s, label, NULL);
+
+	extern char rbss, euram, gint_heap_end, gint_stack_end;
+	jlabel_asprintf(label,
+		"API RAM: 74000000 (%u bytes)\n"
+		"Physical backing: %08x\n"
+		"Static RAM: %08x..%08x\n"
+		"Heap limit: %08x\n"
+		"Stack top: %08x\n\n"
+		"Chip-wide write probes are not run on OS memory.",
+		mmu_uram_size(), (uint32_t)mmu_uram(),
+		(uint32_t)&rbss, (uint32_t)&euram,
+		(uint32_t)&gint_heap_end, (uint32_t)&gint_stack_end);
+
+	while(true) {
+		jevent e = jscene_run(gintctl_scene());
+		if(jevent_is_press(e, KEY_EXIT))
+			break;
+	}
+#else
 	struct region r[] = {
 		{ "ILRAM", 0xe5200000, false,    4, /**/ 0, 0 },
 		{ "XRAM",  0xe5007000, false,    4, /**/ 0, 0 },
@@ -521,4 +552,5 @@ void gintctl_gint_ram(void)
 	restore((void *)r[6].mem, saves[3], 5);
 	restore((void *)r[7].mem, saves[4], 7);
 	restore((void *)r[8].mem, saves[5], 2);
+#endif
 }

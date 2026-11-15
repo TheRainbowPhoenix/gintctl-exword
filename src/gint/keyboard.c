@@ -230,7 +230,7 @@ static void render(keydev_t *d, key_event_t *last_events, int counter)
 	#endif /* FX9860G */
 
 	#if GINT_RENDER_RGB
-	int x3 = 200, y3 = 30;
+	int x3 = GINT_HW_EX ? 320 : 200, y3 = 30;
 	if(DWIDTH <= 320)
 		x3 -= 190, y3 += 120;
 

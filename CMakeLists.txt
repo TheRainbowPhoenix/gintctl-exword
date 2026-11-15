@@ -66,6 +66,7 @@ set(SOURCES
 )
 if(FXSDK_PLATFORM_LONG STREQUAL "exword")
   list(FILTER SOURCES EXCLUDE REGEX "^src/perf/")
+  list(APPEND SOURCES src/perf/libprof.c src/perf/render.c)
 endif()
 
 set(ASSETS_fx
@@ -140,6 +141,7 @@ set(ASSETS_exword
   assets-cg/img/kbd_sprite_ex.png
 )
 list(REMOVE_ITEM ASSETS_exword assets-cg/img/libimg_train.png)
+list(APPEND ASSETS_exword assets-cg/fonts/unicode.txt)
 
 fxconv_declare_converters(assets-cg/converters.py)
 fxconv_declare_assets(
@@ -150,6 +152,13 @@ fxconv_declare_assets(
   WITH_METADATA
 
 )
+
+if(FXSDK_PLATFORM_LONG STREQUAL "exword")
+  file(GLOB UNICODE_BLOCKS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets-fx/fonts/uf5x7/U+*.png")
+  set_property(SOURCE assets-cg/fonts/unicode.txt APPEND PROPERTY OBJECT_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets-cg/converters.py" ${UNICODE_BLOCKS})
+endif()
 
 add_executable(gintctl ${SOURCES} ${ASSETS_${FXSDK_PLATFORM}})
 target_compile_options(gintctl PRIVATE

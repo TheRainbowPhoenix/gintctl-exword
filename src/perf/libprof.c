@@ -33,7 +33,8 @@ static uint32_t run_rtc(void)
 	int volatile flag = 0;
 	prof = prof_make();
 
-	rtc_periodic_enable(RTC_16Hz, GINT_CALL(speed_callback, &flag));
+	if(!rtc_periodic_enable(RTC_16Hz, GINT_CALL(speed_callback, &flag)))
+		return 0;
 
 	while(flag != 2) sleep();
 	return prof_time(prof);
@@ -80,7 +81,7 @@ void gintctl_perf_libprof(void)
 
 		if(test)
 		{
-			row_print(5, 1, "Sleep: %.3D ms", sleep_delay);
+			row_print(5, 1, "Sleep: %u.%03u ms", sleep_delay / 1000, sleep_delay % 1000);
 			row_print(6, 1, "Empty: %d us", empty);
 			row_print(7, 1, "RTC 16 Hz: %d us", rtc_16Hz);
 		}
@@ -100,7 +101,7 @@ void gintctl_perf_libprof(void)
 
 		if(test)
 		{
-			row_print(7, 1, "Sleep: %.3D ms", sleep_delay);
+			row_print(7, 1, "Sleep: %u.%03u ms", sleep_delay / 1000, sleep_delay % 1000);
 			row_print(8, 1, "Empty: %d us", empty);
 			row_print(9, 1, "Tests: %d", test);
 			row_print(10, 1, "RTC 16 Hz: %d us", rtc_16Hz);

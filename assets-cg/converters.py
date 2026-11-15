@@ -1,6 +1,7 @@
 import fxconv
 import sys
 import os
+import tempfile
 
 from PIL import Image, ImageChops
 
@@ -11,6 +12,8 @@ import rectpack
 def convert(input, output, params, target):
     if params["custom-type"] == "kbd-sprite":
         return convert_kbd_sprite(input, params["keycodes"])
+    if params["custom-type"] == "unicode-test-font":
+        return convert_unicode_test_font(input)
     return None
 
 # Assuming that im has a rectangle of pixels all satisfying a predicate P and
@@ -209,3 +212,41 @@ def convert_kbd_sprite(input, keycodeset):
     o += fxconv.ptr(b"".join(bytes([x, y, w, h]) for x, y, w, h in BGS))
     o += fxconv.ptr(b"".join(DATA_KEYS))
     return o
+
+
+def convert_unicode_test_font(input):
+    with open(input, encoding="utf-8") as source:
+        characters = set(map(ord, source.read().strip()))
+    characters.update(range(0x20, 0x7f))
+    grid = fxconv.Grid({"size": "5x7", "padding": "1", "border": "0"})
+    directory = os.path.join(os.path.dirname(__file__), "../assets-fx/fonts/uf5x7")
+    glyphs = {}
+    for name in os.listdir(directory):
+        if not name.startswith("U+") or not name.endswith(".png"):
+            continue
+        base = int(name[2:-4], 16)
+        with Image.open(os.path.join(directory, name)) as image:
+            for index, bounds in enumerate(grid.iter(image)):
+                if base + index in characters:
+                    glyphs[base + index] = image.crop(bounds).convert("RGB")
+    if characters - glyphs.keys():
+        raise fxconv.FxconvError("Missing Unicode test glyphs")
+
+    blocks = []
+    for code in sorted(characters):
+        if blocks and code == blocks[-1][-1] + 1:
+            blocks[-1].append(code)
+        else:
+            blocks.append([code])
+    with tempfile.TemporaryDirectory(prefix="gintctl-font-") as output:
+        for block in blocks:
+            image = Image.new("RGB", (5 * len(block), 7), "white")
+            for index, code in enumerate(block):
+                image.paste(glyphs[code], (5 * index, 0))
+            image.save(os.path.join(output, f"U+{block[0]:04X}.png"))
+        return fxconv.convert_topti(output, {
+            "charset": "unicode",
+            "grid": {"size": "5x7", "padding": "0", "border": "0"},
+            "height": "7",
+            "line-distance": "8",
+        })

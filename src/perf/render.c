@@ -42,7 +42,7 @@ char *printtime(uint32_t us)
 	static char str[20];
 
 	if(us < 1000) sprintf(str, "%d us", us);
-	else sprintf(str, "%.1D ms", us / 100);
+	else sprintf(str, "%u.%u ms", us / 1000, (us % 1000) / 100);
 
 	return str;
 }
