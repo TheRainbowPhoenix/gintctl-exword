@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/therainbowphoenix/gint-docker:main
+    env:
+      FXSDK_ROOT: /home/dev/.local
 
     steps:
       - name: Checkout
@@ -21,8 +23,35 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Build (fxsdk build-cp)
+      - name: Install forked fxSDK
+        shell: bash
         run: |
+          set -euo pipefail
+          git clone --depth=1 --branch fix/exword-data-load-alignment \
+            https://github.com/TheRainbowPhoenix/fxsdk-exword.git /tmp/fxsdk-src
+          cmake -S /tmp/fxsdk-src -B /tmp/fxsdk-build \
+            -DCMAKE_INSTALL_PREFIX="$FXSDK_ROOT" \
+            -DFXLINK_DISABLE_SDL2=ON -DFXLINK_DISABLE_UDISKS2=ON
+          cmake --build /tmp/fxsdk-build --parallel 2
+          cmake --install /tmp/fxsdk-build
+
+      - name: Build and install forked gint (fx-CP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch feature/exword-runtime-bridge \
+            https://github.com/TheRainbowPhoenix/gint-exword.git /tmp/gint-src
+          cmake -S /tmp/gint-src -B /tmp/gint-cp-build \
+            -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
+            -DCMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk" \
+            -DFXSDK_CMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk"
+          cmake --build /tmp/gint-cp-build --parallel 2
+          cmake --install /tmp/gint-cp-build
+
+      - name: Build (fxsdk build-cp)
+        shell: bash
+        run: |
+          set -euo pipefail
           fxsdk build-cp
           test -s gintctl.hh3
 
