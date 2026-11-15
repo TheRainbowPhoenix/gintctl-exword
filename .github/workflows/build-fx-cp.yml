@@ -1,0 +1,135 @@
+name: Build (fx-cp)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/therainbowphoenix/gint-docker:main
+    env:
+      FXSDK_ROOT: /home/dev/.local
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install forked fxSDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch fix/exword-data-load-alignment \
+            https://github.com/TheRainbowPhoenix/fxsdk-exword.git /tmp/fxsdk-src
+          cmake -S /tmp/fxsdk-src -B /tmp/fxsdk-build \
+            -DCMAKE_INSTALL_PREFIX="$FXSDK_ROOT" \
+            -DFXLINK_DISABLE_SDL2=ON -DFXLINK_DISABLE_UDISKS2=ON
+          cmake --build /tmp/fxsdk-build --parallel 2
+          cmake --install /tmp/fxsdk-build
+
+      - name: Build and install forked gint (fx-CP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --branch feature/exword-runtime-bridge \
+            https://github.com/TheRainbowPhoenix/gint-exword.git /tmp/gint-src
+          cmake -S /tmp/gint-src -B /tmp/gint-cp-build \
+            -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
+            -DCMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk" \
+            -DFXSDK_CMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk"
+          cmake --build /tmp/gint-cp-build --parallel 2
+          cmake --install /tmp/gint-cp-build
+
+      - name: Build and install matching JustUI (fx-CP)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --branch dev \
+            https://github.com/TheRainbowPhoenix/JustUI-exword.git /tmp/justui-src
+          cmake -S /tmp/justui-src -B /tmp/justui-cp-build \
+            -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
+            -DCMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk" \
+            -DFXSDK_CMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk"
+          cmake --build /tmp/justui-cp-build --parallel 2
+          cmake --install /tmp/justui-cp-build
+
+      - name: Build (fxsdk build-cp)
+        shell: bash
+        run: |
+          set -euo pipefail
+          fxsdk build-cp
+          test -s gintctl.hh3
+
+      - name: Inspect fx-CP ELF headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh-elf-readelf -h -lW gintctl.hh3
+
+      - name: Build minimal gint boot test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S .github/hh3-smoke -B build-hh3-smoke \
+            -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
+            -DCMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk" \
+            -DFXSDK_CMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk"
+          cmake --build build-hh3-smoke --parallel 2
+          test -s build-hh3-smoke/gint-smoke.hh3
+
+      - name: Upload gint smoke test
+        uses: actions/upload-artifact@v4
+        with:
+          name: gint-smoke.hh3
+          path: build-hh3-smoke/gint-smoke.hh3
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload gintctl.hh3
+        uses: actions/upload-artifact@v4
+        with:
+          name: gintctl.hh3
+          path: gintctl.hh3
+          if-no-files-found: error
+          retention-days: 14
+
+  # A/B test: baseline gint from the image, with the missing EX macro set to 0.
+  stock:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/therainbowphoenix/gint-docker:main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Build with container's original gint
+        shell: bash
+        run: |
+          set -euo pipefail
+          fxsdk build-cp -c -DCMAKE_C_FLAGS=-DGINT_HW_EX=0
+          fxsdk build-cp
+          test -s gintctl.hh3
+          cp gintctl.hh3 gintctl-stock.hh3
+
+      - name: Inspect ELF headers
+        shell: bash
+        run: |
+          sh-elf-readelf -h -lW gintctl-stock.hh3
+
+      - name: Upload baseline gintctl
+        uses: actions/upload-artifact@v4
+        with:
+          name: gintctl-stock.hh3
+          path: gintctl-stock.hh3
+          if-no-files-found: error
+          retention-days: 14
