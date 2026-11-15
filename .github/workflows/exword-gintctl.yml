@@ -90,17 +90,51 @@ jobs:
           cmake --build build-exword --parallel 2
           test -s build-exword/gintctl.d01
           test "$(stat -c %s build-exword/gintctl.d01)" -le 131072
+          for locale in ja cn; do
+            package="build-exword/packages/${locale}/GINTC"
+            test -s "$package/gintctl.d01"
+            test -s "$package/train.bin"
+            test -s "$package/diction.htm"
+            test -f "$package/fileinfo.cji"
+          done
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Japanese package
+        uses: actions/upload-artifact@v4
+        with:
+          name: gintctl-exword-ja
+          if-no-files-found: error
+          path: build-exword/packages/ja/
+
+      - name: Upload Chinese package
+        uses: actions/upload-artifact@v4
+        with:
+          name: gintctl-exword-cn
+          if-no-files-found: error
+          path: build-exword/packages/cn/
+
+      - name: Collect build diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build-exword/diagnostics
+          if [ -f build-exword/map ]; then
+            cp build-exword/map build-exword/diagnostics/gintctl.map
+          fi
+          if [ -f build-exword/CMakeFiles/CMakeConfigureLog.yaml ]; then
+            cp build-exword/CMakeFiles/CMakeConfigureLog.yaml build-exword/diagnostics/gintctl-configure.yaml
+          fi
+          for component in fxsdk gint justui; do
+            log="/tmp/${component}-build/CMakeFiles/CMakeConfigureLog.yaml"
+            if [ -f "$log" ]; then
+              cp "$log" "build-exword/diagnostics/${component}-configure.yaml"
+            fi
+          done
+
+      - name: Upload build diagnostics
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gintctl-exword-build
+          name: gintctl-exword-diagnostics
           if-no-files-found: warn
-          path: |
-            build-exword/packages/
-            build-exword/gintctl.d01
-            build-exword/map
-            build-exword/CMakeFiles/CMakeConfigureLog.yaml
-            /tmp/fxsdk-build/CMakeFiles/CMakeConfigureLog.yaml
-            /tmp/gint-build/CMakeFiles/CMakeConfigureLog.yaml
-            /tmp/justui-build/CMakeFiles/CMakeConfigureLog.yaml
+          path: build-exword/diagnostics/
