@@ -55,10 +55,68 @@ jobs:
           fxsdk build-cp
           test -s gintctl.hh3
 
+      - name: Inspect fx-CP ELF headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh-elf-readelf -h -lW gintctl.hh3
+
+      - name: Build minimal gint boot test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S .github/hh3-smoke -B build-hh3-smoke \
+            -DCMAKE_TOOLCHAIN_FILE="$FXSDK_ROOT/lib/cmake/fxsdk/FXCP.cmake" \
+            -DCMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk" \
+            -DFXSDK_CMAKE_MODULE_PATH="$FXSDK_ROOT/lib/cmake/fxsdk"
+          cmake --build build-hh3-smoke --parallel 2
+          test -s build-hh3-smoke/gint-smoke.hh3
+
+      - name: Upload gint smoke test
+        uses: actions/upload-artifact@v4
+        with:
+          name: gint-smoke.hh3
+          path: build-hh3-smoke/gint-smoke.hh3
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload gintctl.hh3
         uses: actions/upload-artifact@v4
         with:
           name: gintctl.hh3
           path: gintctl.hh3
+          if-no-files-found: error
+          retention-days: 14
+
+  # A/B test: baseline gint from the image, with the missing EX macro set to 0.
+  stock:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/therainbowphoenix/gint-docker:main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Build with container's original gint
+        shell: bash
+        run: |
+          set -euo pipefail
+          fxsdk build-cp -c -DCMAKE_C_FLAGS=-DGINT_HW_EX=0
+          fxsdk build-cp
+          test -s gintctl.hh3
+          cp gintctl.hh3 gintctl-stock.hh3
+
+      - name: Inspect ELF headers
+        shell: bash
+        run: |
+          sh-elf-readelf -h -lW gintctl-stock.hh3
+
+      - name: Upload baseline gintctl
+        uses: actions/upload-artifact@v4
+        with:
+          name: gintctl-stock.hh3
+          path: gintctl-stock.hh3
           if-no-files-found: error
           retention-days: 14
