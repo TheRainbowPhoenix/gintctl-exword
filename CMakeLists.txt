@@ -7,11 +7,13 @@ include(GenerateG1A)
 include(GenerateG3A)
 include(GenerateHH3)
 include(Fxconv)
+
 if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
   include(GenerateD01)
   include(GenerateEXWORDPackage)
   set(CMAKE_FXCONV_COMPILE_OBJECT
-    "<CMAKE_FXCONV_COMPILER> --toolchain=sh-elf --cg <SOURCE> -o <OBJECT>")
+    "<CMAKE_FXCONV_COMPILER> --toolchain=sh-elf --cg <SOURCE> -o <OBJECT>"
+  )
 endif()
 
 find_package(Gint 2.11 REQUIRED)
@@ -60,6 +62,7 @@ set(SOURCES
   src/widgets/gmenu.c
   src/widgets/gscreen.c
   src/widgets/gtable.c
+
 )
 if(FXSDK_PLATFORM_LONG STREQUAL "exword")
   list(FILTER SOURCES EXCLUDE REGEX "^src/perf/")
@@ -107,7 +110,9 @@ set(ASSETS_fx
   assets-fx/img/rtc_arrows.png
   assets-fx/img/rtc_segments.png
   assets-fx/img/tlb_cells.png
+
 )
+
 set(ASSETS_RGB
   assets-cg/fonts/font8x9_bold.png
   assets-cg/img/kbd_events.png
@@ -117,42 +122,65 @@ set(ASSETS_RGB
   assets-cg/img/libimg_sq_odd.png
   assets-cg/img/libimg_train.png
   assets-cg/img/rtc_arrows.png
+
 )
+
 set(ASSETS_cg
   ${ASSETS_RGB}
-  assets-cg/img/kbd_sprite_cg.png)
+  assets-cg/img/kbd_sprite_cg.png
+)
+
 set(ASSETS_cp
   ${ASSETS_RGB}
-  assets-cg/img/kbd_sprite_cp.png)
+  assets-cg/img/kbd_sprite_cp.png
+)
 
 set(ASSETS_exword
   ${ASSETS_RGB}
-  assets-cg/img/kbd_sprite_ex.png)
+  assets-cg/img/kbd_sprite_ex.png
+)
+list(REMOVE_ITEM ASSETS_exword assets-cg/img/libimg_train.png)
 
 fxconv_declare_converters(assets-cg/converters.py)
-fxconv_declare_assets(${ASSETS_fx} ${ASSETS_cg} ${ASSETS_cp} ${ASSETS_exword} WITH_METADATA)
+fxconv_declare_assets(
+  ${ASSETS_fx}
+  ${ASSETS_cg}
+  ${ASSETS_cp}
+  ${ASSETS_exword}
+  WITH_METADATA
+
+)
 
 add_executable(gintctl ${SOURCES} ${ASSETS_${FXSDK_PLATFORM}})
 target_compile_options(gintctl PRIVATE
-  -Wall -Wextra -Os -g -flto -Wno-error=implicit-function-declaration)
+  -Wall -Wextra -Os -g -flto -Wno-error=implicit-function-declaration
+)
 target_link_options(gintctl PRIVATE
-  -flto=auto -Wl,-Map=map -Wl,--print-memory-usage)
+  -flto=auto -Wl,-Map=map -Wl,--print-memory-usage
+)
 target_include_directories(gintctl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(gintctl
-  JustUI::JustUI Gint::Gint)
+  JustUI::JustUI
+  Gint::Gint
+
+)
 
 if("${FXSDK_PLATFORM_LONG}" STREQUAL fx9860G)
   generate_g1a(TARGET gintctl OUTPUT "gintctl.g1a"
-    NAME "gintctl" INTERNAL "@GINTCTL" ICON assets-fx/icon.png)
+    NAME "gintctl" INTERNAL "@GINTCTL" ICON assets-fx/icon.png
+  )
 elseif("${FXSDK_PLATFORM_LONG}" STREQUAL fxCG50)
   generate_g3a(TARGET gintctl OUTPUT "gintctl.g3a"
-    NAME "" ICONS assets-cg/icon-uns.png assets-cg/icon-sel.png)
+    NAME "" ICONS assets-cg/icon-uns.png assets-cg/icon-sel.png
+  )
   add_custom_command(TARGET gintctl POST_BUILD
     COMMAND echo -n "g3a file size: "
-    COMMAND stat -c %s "${CMAKE_CURRENT_SOURCE_DIR}/gintctl.g3a")
+    COMMAND stat -c %s "${CMAKE_CURRENT_SOURCE_DIR}/gintctl.g3a"
+  )
 elseif("${FXSDK_PLATFORM_LONG}" STREQUAL fx9860G_G3A)
   generate_g3a(TARGET gintctl OUTPUT "gintctl-fx.g3a"
-    NAME "" ICONS assets-cg/icon-uns.png assets-cg/icon-sel.png)
+    NAME "" ICONS assets-cg/icon-uns.png assets-cg/icon-sel.png
+  )
 elseif("${FXSDK_PLATFORM_LONG}" STREQUAL fxCP)
   generate_hh3(TARGET gintctl OUTPUT "gintctl.hh3")
 endif()
@@ -164,14 +192,57 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
   if(NOT GINT_EXWORD_LINKER_SCRIPT)
     message(FATAL_ERROR "Installed gint EX-word kernel linker script required")
   endif()
+
   target_compile_definitions(gintctl PRIVATE GINTCTL_ENABLE_USB=0)
   target_compile_options(gintctl PRIVATE -fno-pic -fno-pie -fno-stack-protector)
   target_link_options(gintctl PRIVATE -nostdlib -no-pie
-    -Wl,--build-id=none -Wl,--no-warn-rwx-segments)
-  generate_d01(TARGET gintctl OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01" MODULE "gintct")
-  generate_exword_package(TARGET gintctl
+    -Wl,--build-id=none -Wl,--no-warn-rwx-segments
+  )
+
+  generate_d01(
+    TARGET gintctl
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
+    MODULE "gintct"
+  )
+
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  get_filename_component(FXCONV_MODULE_DIR
+    "${CMAKE_FXCONV_COMPILER}" DIRECTORY
+  )
+  set(TRAIN_ASSET "${CMAKE_CURRENT_BINARY_DIR}/train.bin")
+
+  add_custom_command(
+    OUTPUT "${TRAIN_ASSET}"
+    COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/assets-cg/export_train.py"
+      "${FXCONV_MODULE_DIR}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/assets-cg/img/libimg_train.png"
+      "${TRAIN_ASSET}"
+    DEPENDS
+      assets-cg/export_train.py
+      assets-cg/img/libimg_train.png
+    VERBATIM
+  )
+
+  add_custom_target(gintctl_assets DEPENDS "${TRAIN_ASSET}")
+  add_dependencies(gintctl gintctl_assets)
+
+  generate_exword_package(
+    TARGET gintctl
     D01 "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
-    APPID GINTC TITLE "gint control application"
+    APPID GINTC
+    TITLE "gint control application"
     HTML_DIR "${EXWORD_METADATA_SOURCE}/html"
-    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages" LOCALES ja cn)
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages"
+    LOCALES ja cn
+  )
+
+  foreach(locale ja cn)
+    add_custom_command(
+      TARGET gintctl_package_${locale} POST_BUILD
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${TRAIN_ASSET}"
+        "${CMAKE_CURRENT_BINARY_DIR}/packages/${locale}/GINTC/train.bin"
+      VERBATIM
+    )
+  endforeach()
 endif()

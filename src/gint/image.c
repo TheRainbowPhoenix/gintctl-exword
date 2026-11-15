@@ -7,7 +7,58 @@
 #include <stdlib.h>
 
 #if GINT_RENDER_RGB
-static void scene_1(void)
+#if GINT_HW_EX
+#include <gint/exword.h>
+#include <gint/gint.h>
+#include <string.h>
+
+static int read_asset(int fd, void *buffer, int size)
+{
+	char *data = buffer;
+	while(size > 0) {
+		int count = exword_sys_read(fd, data, size);
+		if(count <= 0 || count > size)
+			return 0;
+		data += count;
+		size -= count;
+	}
+	return 1;
+}
+
+static int load_train(image_t **out)
+{
+	int fd = exword_sys_open("\\\\drv0\\CASIO\\GINTC\\_CONTENT\\train.bin", 1);
+	if(fd < 0)
+		fd = exword_sys_open("\\\\crd0\\CASIO\\GINTC\\_CONTENT\\train.bin", 1);
+	if(fd < 0)
+		return 0;
+
+	uint8_t header[8];
+	uint8_t const expected[8] = {'G', 'C', 'T', '1', 0, 96, 0, 56};
+	image_t *img = NULL;
+	int ok = exword_sys_get_filesize(fd) == 8 + 512 + 96 * 56 &&
+		read_asset(fd, header, sizeof header) &&
+		!memcmp(header, expected, sizeof header);
+	if(ok) {
+		img = image_alloc(96, 56, IMAGE_P8_RGB565);
+		ok = img && image_alloc_palette(img, 256);
+	}
+	if(ok) {
+		ok = read_asset(fd, img->palette, 512) &&
+			read_asset(fd, img->data, img->stride * img->height);
+	}
+	exword_sys_close(fd);
+	if(!ok) {
+		image_free(img);
+		return 0;
+	}
+
+	*out = img;
+	return 1;
+}
+#endif
+
+static void scene_1(image_t *train)
 {
 	dclear(0x5555);
 
@@ -15,13 +66,11 @@ static void scene_1(void)
 	extern image_t img_libimg_sq_odd;
 	extern image_t img_libimg_even_odd;
 	extern image_t img_libimg_odd_even;
-	extern image_t img_libimg_train;
 
 	image_t const *in[4] = {
 		&img_libimg_sq_even, &img_libimg_sq_odd,
 		&img_libimg_odd_even, &img_libimg_even_odd
 	};
-	image_t *train = &img_libimg_train;
 	image_t *vram = image_create_vram();
 
 	image_fill(vram, 0xffff);
@@ -149,12 +198,10 @@ static void print_linear_map(int x, int y, struct image_linear_map *map)
 #endif
 }
 
-static void scene_2(void)
+static void scene_2(image_t *train)
 {
 	dclear(C_WHITE);
 
-	extern image_t img_libimg_train;
-	image_t *train = &img_libimg_train;
 	image_t *vram = image_create_vram();
 
 	struct image_linear_map map;
@@ -228,6 +275,21 @@ static void scene_3(image_t **img_ptr, u16 *palette, bool *force)
 /* gintctl_gint_image(): Test image rendering */
 void gintctl_gint_image(void)
 {
+#if GINT_HW_EX
+	image_t *train = NULL;
+	if(!gint_world_switch(GINT_CALL(load_train, (void *)&train))) {
+		dclear(C_WHITE);
+		dtext(4, 4, C_BLACK, "Cannot load GINTC/_CONTENT/train.bin");
+		dtext(4, 20, C_BLACK, "Install train.bin alongside gintctl.d01.");
+		dupdate();
+		getkey();
+		return;
+	}
+#else
+	extern image_t img_libimg_train;
+	image_t *train = &img_libimg_train;
+#endif
+
 	int tab=0, key=0;
 	image_t *img_pattern = NULL;
 	u16 img_pattern_palette[16];
@@ -235,9 +297,9 @@ void gintctl_gint_image(void)
 
 	while(key != KEY_EXIT) {
 		if(tab == 0)
-			scene_1();
+			scene_1(train);
 		else if(tab == 1)
-			scene_2();
+			scene_2(train);
 		else if(tab == 2)
 			scene_3(&img_pattern, img_pattern_palette, &force_scene_3);
 
@@ -254,6 +316,9 @@ void gintctl_gint_image(void)
 	}
 
 	image_free(img_pattern);
+#if GINT_HW_EX
+	image_free(train);
+#endif
 }
 #endif
 
