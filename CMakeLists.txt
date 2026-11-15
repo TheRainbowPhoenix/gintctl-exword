@@ -161,13 +161,13 @@ if("${FXSDK_PLATFORM_LONG}" STREQUAL "exword")
   if(NOT DEFINED EXWORD_FXSDK_TESTS OR NOT DEFINED EXWORD_METADATA_SOURCE)
     message(FATAL_ERROR "EXWORD_FXSDK_TESTS and EXWORD_METADATA_SOURCE required")
   endif()
-  target_sources(gintctl PRIVATE "${EXWORD_FXSDK_TESTS}/crt0.S")
+  if(NOT GINT_EXWORD_LINKER_SCRIPT)
+    message(FATAL_ERROR "Installed gint EX-word kernel linker script required")
+  endif()
   target_compile_definitions(gintctl PRIVATE GINTCTL_ENABLE_USB=0)
   target_compile_options(gintctl PRIVATE -fno-pic -fno-pie -fno-stack-protector)
   target_link_options(gintctl PRIVATE -nostdlib -no-pie
-    "-Wl,-T,${EXWORD_FXSDK_TESTS}/exword.ld"
     -Wl,--build-id=none -Wl,--no-warn-rwx-segments)
-  set_property(TARGET gintctl APPEND PROPERTY LINK_DEPENDS "${EXWORD_FXSDK_TESTS}/exword.ld")
   generate_d01(TARGET gintctl OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01" MODULE "gintct")
   generate_exword_package(TARGET gintctl
     D01 "${CMAKE_CURRENT_BINARY_DIR}/gintctl.d01"
